@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import cwms.cda.api.errors.CdaError;
 import cwms.cda.data.dao.ForecastInstanceDao;
 import cwms.cda.data.dao.JooqDao;
+import cwms.cda.data.dao.MockForecastInstanceDao;
 import cwms.cda.data.dto.forecast.ForecastInstance;
 import cwms.cda.formatters.ContentType;
 import cwms.cda.formatters.Formats;
@@ -85,7 +86,7 @@ public class ForecastInstanceController implements CrudHandler {
     @Override
     public void create(@NotNull Context ctx) {
         try (final Timer.Context ignored = markAndTime(CREATE)) {
-            ForecastInstanceDao dao = new ForecastInstanceDao(getDslContext(ctx));
+            ForecastInstanceDao dao = new MockForecastInstanceDao(getDslContext(ctx));
 
             ForecastInstance forecastInstance = deserializeForecastInstance(ctx);
             dao.create(forecastInstance);
@@ -131,7 +132,7 @@ public class ForecastInstanceController implements CrudHandler {
         String forecastDate =  requiredParam(ctx, FORECAST_DATE);
         String issueDate = requiredParam(ctx, ISSUE_DATE);
         try (final Timer.Context ignored = markAndTime(DELETE)) {
-            ForecastInstanceDao dao = new ForecastInstanceDao(getDslContext(ctx));
+            ForecastInstanceDao dao = new MockForecastInstanceDao(getDslContext(ctx));
             dao.delete(office, name, designator, forecastDate, issueDate);
         }
     }
@@ -168,7 +169,7 @@ public class ForecastInstanceController implements CrudHandler {
             String desionatorMask = ctx.queryParam(DESIGNATOR_MASK);
             String name = ctx.queryParam(NAME);
 
-            ForecastInstanceDao dao = new ForecastInstanceDao(getDslContext(ctx));
+            ForecastInstanceDao dao = new MockForecastInstanceDao(getDslContext(ctx));
             List<ForecastInstance> instances = dao.getForecastInstances(office, name, desionatorMask);
             String formatHeader = ctx.header(Header.ACCEPT);
             ContentType contentType = Formats.parseHeaderAndQueryParm(formatHeader, null);
@@ -221,7 +222,7 @@ public class ForecastInstanceController implements CrudHandler {
         String forecastDate =  requiredParam(ctx, FORECAST_DATE);
         String issueDate = requiredParam(ctx, ISSUE_DATE);
         try (final Timer.Context ignored = markAndTime(GET_ONE)) {
-            ForecastInstanceDao dao = new ForecastInstanceDao(getDslContext(ctx));
+            ForecastInstanceDao dao = new MockForecastInstanceDao(getDslContext(ctx));
             ForecastInstance instance = dao.getForecastInstance(office, name, designator, forecastDate, issueDate);
             String formatHeader = ctx.header(Header.ACCEPT);
             ContentType contentType = Formats.parseHeaderAndQueryParm(formatHeader, null);
@@ -257,7 +258,7 @@ public class ForecastInstanceController implements CrudHandler {
     public void update(@NotNull Context ctx, @NotNull String name) {
         try (final Timer.Context ignored = markAndTime(UPDATE)) {
             ForecastInstance forecastInstance = deserializeForecastInstance(ctx);
-            ForecastInstanceDao dao = new ForecastInstanceDao(getDslContext(ctx));
+            ForecastInstanceDao dao = new MockForecastInstanceDao(getDslContext(ctx));
             dao.update(forecastInstance);
         } catch (IOException | DataAccessException ex) {
             CdaError re = new CdaError("Internal Error");

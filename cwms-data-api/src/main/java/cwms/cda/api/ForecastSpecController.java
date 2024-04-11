@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import cwms.cda.api.errors.CdaError;
 import cwms.cda.data.dao.ForecastSpecDao;
 import cwms.cda.data.dao.JooqDao;
+import cwms.cda.data.dao.MockForecastSpecDao;
 import cwms.cda.data.dto.forecast.ForecastSpec;
 import cwms.cda.formatters.ContentType;
 import cwms.cda.formatters.Formats;
@@ -87,7 +88,7 @@ public class ForecastSpecController implements CrudHandler {
     public void create(@NotNull Context ctx) {
         try (final Timer.Context ignored = markAndTime(CREATE)) {
             DSLContext dsl = getDslContext(ctx);
-            ForecastSpecDao dao = new ForecastSpecDao(dsl);
+            ForecastSpecDao dao = new MockForecastSpecDao(dsl);
             ForecastSpec forecastSpec = deserializeForecastSpec(ctx);
 
             dao.create(forecastSpec);
@@ -126,7 +127,7 @@ public class ForecastSpecController implements CrudHandler {
 
         try (final Timer.Context ignored = markAndTime(DELETE)) {
             DSLContext dsl = getDslContext(ctx);
-            ForecastSpecDao dao = new ForecastSpecDao(dsl);
+            ForecastSpecDao dao = new MockForecastSpecDao(dsl);
 
             dao.delete(office, name, designator);
         }
@@ -172,7 +173,7 @@ public class ForecastSpecController implements CrudHandler {
             String sourceEntity = ctx.queryParam(SOURCE_ENTITY);
 
             DSLContext dsl = getDslContext(ctx);
-            ForecastSpecDao dao = new ForecastSpecDao(dsl);
+            ForecastSpecDao dao = new MockForecastSpecDao(dsl);
 
             List<ForecastSpec> specs = dao.getForecastSpecs(office, names, designator,
                     location, sourceEntity);
@@ -222,7 +223,7 @@ public class ForecastSpecController implements CrudHandler {
             String designator = requiredParam(ctx, DESIGNATOR);
 
             DSLContext dsl = getDslContext(ctx);
-            ForecastSpecDao dao = new ForecastSpecDao(dsl);
+            ForecastSpecDao dao = new MockForecastSpecDao(dsl);
 
             ForecastSpec spec = dao.getForecastSpec(office, name, designator);
 
@@ -260,7 +261,7 @@ public class ForecastSpecController implements CrudHandler {
             ForecastSpec forecastSpec = deserializeForecastSpec(ctx);
 
             DSLContext dsl = getDslContext(ctx);
-            ForecastSpecDao dao = new ForecastSpecDao(dsl);
+            ForecastSpecDao dao = new MockForecastSpecDao(dsl);
 
             dao.update(forecastSpec);
 
