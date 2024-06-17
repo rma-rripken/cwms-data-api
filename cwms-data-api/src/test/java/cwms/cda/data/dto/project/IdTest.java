@@ -24,32 +24,43 @@
 
 package cwms.cda.data.dto.project;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import cwms.cda.api.errors.FieldException;
-import cwms.cda.data.dto.CwmsDTOBase;
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import cwms.cda.formatters.ContentType;
 import cwms.cda.formatters.Formats;
-import cwms.cda.formatters.annotations.FormattableWith;
-import cwms.cda.formatters.json.JsonV1;
+import cwms.cda.formatters.json.JsonV2;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.Test;
 
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.KebabCaseStrategy.class)
-@FormattableWith(contentType = Formats.JSON, formatter = JsonV1.class)
-public class Id implements CwmsDTOBase {
-    private final String id;
+class IdTest {
 
-    public Id(@JsonProperty(value = "id") String id) {
-        this.id = id;
+    @Test
+    void testSerialize(){
+        Id theId = new Id("1234");
+
+        assertNotNull(theId);
+
+        String json = Formats.format(new ContentType(Formats.JSON), theId);
+        assertNotNull(json);
+        assertTrue(json.contains("1234"));
+
     }
 
-    public String getId() {
-        return id;
+    @Test
+    void testDeserialize() throws IOException {
+        InputStream stream = IdTest.class.getClassLoader().getResourceAsStream(
+                "cwms/cda/data/dto/id.json");
+        assertNotNull(stream);
+        String input = IOUtils.toString(stream, StandardCharsets.UTF_8);
+
+        ObjectMapper om = JsonV2.buildObjectMapper();
+        Id theId = om.readValue(input, Id.class);
+
+        assertNotNull(theId);
     }
 
-    @Override
-    public void validate() throws FieldException {
-
-    }
 }

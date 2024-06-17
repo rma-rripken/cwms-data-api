@@ -22,14 +22,13 @@
  * SOFTWARE.
  */
 
-package cwms.cda.data.dto;
+package cwms.cda.data.dto.project;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import cwms.cda.data.dto.project.Project;
-import cwms.cda.data.dto.project.Projects;
+import cwms.cda.data.dto.Location;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
