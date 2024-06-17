@@ -26,6 +26,7 @@ package cwms.cda.data.dto.project;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cwms.cda.formatters.ContentType;
 import cwms.cda.formatters.Formats;
@@ -33,6 +34,8 @@ import cwms.cda.formatters.json.JsonV2;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +62,7 @@ class LockTest {
                 .withSessionProgram("SessionProgram")
                 .withSessionUser("SessionUser")
                 .withOsUser("OsUser")
+                .withAcquireTime("AcquireTime")
                 .build();
         assertNotNull(lock);
         json = Formats.format(new ContentType(Formats.JSON), lock);
@@ -72,6 +76,34 @@ class LockTest {
         assertTrue(json.contains("SessionUser"));
         assertTrue(json.contains("OsUser"));
 
+    }
+
+
+    @Test
+    void testSerializeList() {
+        List<Lock> locks = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Lock lock = new Lock.Builder("SPK", "ProjectId" + i, "ApplicationId").build();
+            locks.add(lock);
+        }
+
+        String json = Formats.format(new ContentType(Formats.JSON), locks, Lock.class);
+        assertNotNull(json);
+
+    }
+
+    @Test
+    void testDeserializeList() throws IOException {
+        InputStream stream = LockTest.class.getClassLoader().getResourceAsStream(
+                "cwms/cda/data/dto/locks.json");
+        assertNotNull(stream);
+        String input = IOUtils.toString(stream, StandardCharsets.UTF_8);
+
+        ObjectMapper om = JsonV2.buildObjectMapper();
+        List<Lock> lock = om.readValue(input, new TypeReference <List<Lock>>(){});
+
+        assertNotNull(lock);
+        assertTrue(lock.size() > 0);
     }
 
     @Test
