@@ -180,6 +180,7 @@ public final class Controllers {
     public static final String REVOKE_TIMEOUT = "revoke-timeout";
     public static final String PROJECT_MASK = "project-mask";
     public static final String APPLICATION_MASK = "application-mask";
+    public static final String USER_ID = "user-id";
     public static final String TIME_ZONE_ID = "time-zone-id";
     public static final String LOCK_ID = "lock-id";
 

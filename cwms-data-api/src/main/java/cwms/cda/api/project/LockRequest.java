@@ -113,8 +113,8 @@ public class LockRequest implements Handler {
             int revokeTimeout =
                     ctx.queryParamAsClass(REVOKE_TIMEOUT, Integer.class).getOrDefault(10);
 
-            String lockId = lockDao.requestLock(lock.getProjectId(), lock.getApplicationId(),
-                    revokeExisting, revokeTimeout, lock.getOfficeId());
+            String lockId = lockDao.requestLock(lock.getOfficeId(), lock.getProjectId(), lock.getApplicationId(),
+                    revokeExisting, revokeTimeout);
             if (lockId != null) {
                 Id id = new Id(lockId);
                 String acceptHeader = ctx.header(Header.ACCEPT);
@@ -128,13 +128,13 @@ public class LockRequest implements Handler {
                 // We don't have any idea exactly why the create failed - right?
                 // we could try and see if its already locked.
 
-                boolean alreadyLocked = lockDao.isLocked(lock.getProjectId(),
-                        lock.getApplicationId(), lock.getOfficeId());
+                boolean alreadyLocked = lockDao.isLocked(lock.getOfficeId(), lock.getProjectId(),
+                        lock.getApplicationId());
 
                 // Might be able to see if we have revoker rights.
                 String userId = getUser(ctx).orElse(null);
-                lockDao.hasLockRevokerRights(userId, lock.getProjectId(), lock.getApplicationId(),
-                        lock.getOfficeId());
+                lockDao.hasLockRevokerRights(lock.getOfficeId(), userId, lock.getProjectId(), lock.getApplicationId()
+                );
 
                 // or see what the locs are:
                 List<Lock> locks = lockDao.catLocks(lock.getProjectId(), lock.getApplicationId(),
@@ -142,7 +142,8 @@ public class LockRequest implements Handler {
 
                 ctx.status(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 CdaError re =
-                        new CdaError("Requested lock was not retrieved. Already locked: " + alreadyLocked + ", locks: " + locks, true);
+                        new CdaError("Requested lock was not retrieved. Already locked: "
+                                + alreadyLocked + ", locks: " + locks, true);
                 ctx.json(re);
             }
 

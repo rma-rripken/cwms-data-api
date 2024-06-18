@@ -25,12 +25,11 @@
 package cwms.cda.api.project;
 
 import static com.codahale.metrics.MetricRegistry.name;
-import static cwms.cda.api.Controllers.APPLICATION_ID;
-import static cwms.cda.api.Controllers.GET_ONE;
-import static cwms.cda.api.Controllers.OFFICE;
-import static cwms.cda.api.Controllers.PROJECT_ID;
+import static cwms.cda.api.Controllers.APPLICATION_MASK;
+import static cwms.cda.api.Controllers.GET_ALL;
+import static cwms.cda.api.Controllers.OFFICE_MASK;
+import static cwms.cda.api.Controllers.PROJECT_MASK;
 import static cwms.cda.api.Controllers.STATUS_200;
-import static cwms.cda.api.Controllers.STATUS_404;
 import static cwms.cda.api.Controllers.requiredParam;
 
 import com.codahale.metrics.Histogram;
@@ -39,7 +38,7 @@ import com.codahale.metrics.Timer;
 import cwms.cda.api.Controllers;
 import cwms.cda.data.dao.JooqDao;
 import cwms.cda.data.dao.project.ProjectLockDao;
-import cwms.cda.data.dto.project.Lock;
+import cwms.cda.data.dto.project.LockRevokerRights;
 import cwms.cda.formatters.ContentType;
 import cwms.cda.formatters.Formats;
 import io.javalin.core.util.Header;
@@ -50,10 +49,12 @@ import io.javalin.plugin.openapi.annotations.OpenApi;
 import io.javalin.plugin.openapi.annotations.OpenApiContent;
 import io.javalin.plugin.openapi.annotations.OpenApiParam;
 import io.javalin.plugin.openapi.annotations.OpenApiResponse;
+import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 import org.jetbrains.annotations.NotNull;
 
-public class LockStatus implements Handler {
+public class RightsCatalog implements Handler {
+    public static final String TAGS = "Project Lock Revoker Rights";
     private final MetricRegistry metrics;
     private final Histogram requestResultSize;
 
@@ -61,54 +62,51 @@ public class LockStatus implements Handler {
         return Controllers.markAndTime(metrics, getClass().getName(), subject);
     }
 
-    public LockStatus(MetricRegistry metrics) {
+    public RightsCatalog(MetricRegistry metrics) {
         this.metrics = metrics;
-        requestResultSize = this.metrics.histogram((name(LockStatus.class, Controllers.RESULTS, Controllers.SIZE)));
+        requestResultSize = this.metrics.histogram((name(RightsCatalog.class, Controllers.RESULTS,
+                Controllers.SIZE)));
     }
 
+
     @OpenApi(
-            description = "Return a lock if the specified project is locked. Otherwise 404",
+            description = "Get a list of project lock revoker rights ",
             queryParams = {
-                @OpenApiParam(name = PROJECT_ID, required = true,
-                        description = "The id of the project."),
-                @OpenApiParam(name = APPLICATION_ID, required = true,
-                        description = "The application-id"),
-                @OpenApiParam(name = OFFICE, required = true,
-                        description = "The office id."),
+                @OpenApiParam(name = PROJECT_MASK, description =
+                        "Specifies the "
+                                + "project mask to be used to filter the lock revoker rights. "
+                                + "Defaults to '*'"),
+                @OpenApiParam(name = APPLICATION_MASK, description =
+                        "Specifies the "
+                                + "application mask to be used to filter the lock revoker rights. "
+                                + "Defaults to '*'"),
+                @OpenApiParam(name = OFFICE_MASK, required = true, description = "Specifies "
+                        + "the office mask to be used to filter the lock revoker rights. "
+                        + "Supports '*' but is typically a single office."),
             },
             responses = {
                 @OpenApiResponse(status = STATUS_200, content = {
-                    @OpenApiContent(type = Formats.JSON, from = Lock.class)}
-                ),
-                @OpenApiResponse(status = STATUS_404, description = "Not matching Lock was found.")
-            },
-            tags = {"Project Locks"},
-            path = "/project-locks/status",
+                    @OpenApiContent(type = Formats.JSON, from = LockRevokerRights.class)}
+                )},
+            tags = {TAGS},
+            path = "/project-lock-rights/",
             method = HttpMethod.GET
     )
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
-
-        String prjId = requiredParam(ctx, PROJECT_ID);
-        String appId = requiredParam(ctx, APPLICATION_ID);
-        String office = requiredParam(ctx, OFFICE);
-
-        try (final Timer.Context ignored = markAndTime(GET_ONE)) {
+        try (Timer.Context timer = markAndTime(GET_ALL)) {
             ProjectLockDao lockDao = new ProjectLockDao(JooqDao.getDslContext(ctx));
-            boolean locked = lockDao.isLocked(office, prjId, appId);
-            if (locked) {
-                // should we call catLocks instead and get the full lock?
-                Lock lock = new Lock.Builder(office, prjId, appId).build();
-                String acceptHeader = ctx.header(Header.ACCEPT);
-                ContentType acceptType = Formats.parseHeader(acceptHeader, Lock.class);
-                String result = Formats.format(acceptType, lock);
-                ctx.result(result);
-                ctx.contentType(acceptType.toString());
-                requestResultSize.update(result.length());
-                ctx.status(HttpServletResponse.SC_OK);
-            } else {
-                ctx.status(HttpServletResponse.SC_NOT_FOUND);
-            }
+            String projMask = ctx.queryParamAsClass(PROJECT_MASK, String.class).getOrDefault("*");
+            String appMask = ctx.queryParamAsClass(APPLICATION_MASK, String.class).getOrDefault("*");
+            String officeMask = requiredParam(ctx, OFFICE_MASK); // They should have to limit the office.
+
+            List<LockRevokerRights> rights = lockDao.catLockRevokerRights(projMask, appMask, officeMask);
+            String formatHeader = ctx.header(Header.ACCEPT);
+            ContentType contentType = Formats.parseHeader(formatHeader, LockRevokerRights.class);
+            String result = Formats.format(contentType, rights, LockRevokerRights.class);
+            ctx.result(result).contentType(contentType.toString());
+            requestResultSize.update(result.length());
+            ctx.status(HttpServletResponse.SC_OK);
         }
     }
 

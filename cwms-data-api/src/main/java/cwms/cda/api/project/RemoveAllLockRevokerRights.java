@@ -24,17 +24,17 @@
 
 package cwms.cda.api.project;
 
-import static cwms.cda.api.Controllers.APPLICATION_ID;
+import static cwms.cda.api.Controllers.APPLICATION_MASK;
 import static cwms.cda.api.Controllers.DELETE;
 import static cwms.cda.api.Controllers.OFFICE;
-import static cwms.cda.api.Controllers.PROJECT_ID;
-import static cwms.cda.api.Controllers.REVOKE_TIMEOUT;
+import static cwms.cda.api.Controllers.OFFICE_MASK;
+import static cwms.cda.api.Controllers.USER_ID;
 import static cwms.cda.api.Controllers.requiredParam;
+import static cwms.cda.data.dao.JooqDao.getDslContext;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import cwms.cda.api.Controllers;
-import cwms.cda.data.dao.JooqDao;
 import cwms.cda.data.dao.project.ProjectLockDao;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
@@ -43,49 +43,50 @@ import io.javalin.plugin.openapi.annotations.OpenApi;
 import io.javalin.plugin.openapi.annotations.OpenApiParam;
 import javax.servlet.http.HttpServletResponse;
 import org.jetbrains.annotations.NotNull;
+import org.jooq.DSLContext;
 
-public class LockRevoke implements Handler {
+public class RemoveAllLockRevokerRights implements Handler {
+    public static final String PATH = "/project-lock-rights/remove-all";
+    public static final String TAGS = "Project Lock Revoker Rights";
     private final MetricRegistry metrics;
 
     private Timer.Context markAndTime(String subject) {
         return Controllers.markAndTime(metrics, getClass().getName(), subject);
     }
 
-    public LockRevoke(MetricRegistry metrics) {
+    public RemoveAllLockRevokerRights(MetricRegistry metrics) {
         this.metrics = metrics;
     }
 
 
     @OpenApi(
             description = "Revokes a project lock, if successful the lock is deleted",
-            pathParams = {
-                @OpenApiParam(name = PROJECT_ID, required = true,
-                        description = "Specifies the project-id to be deleted"),
-            },
             queryParams = {
-                @OpenApiParam(name = OFFICE, required = true,
-                        description = "Specifies the office of the lock."),
-                @OpenApiParam(name = REVOKE_TIMEOUT, type = Integer.class,
-                        description = "time in seconds to wait for existing lock to be revoked. Default: 10")
+                @OpenApiParam(name = USER_ID, required = true,
+                        description = "Specifies the user."),
+                @OpenApiParam(name = APPLICATION_MASK, required = true, description =
+                        "Specifies the application mask."),
+                @OpenApiParam(name = OFFICE_MASK, required = true, description =
+                        "Specifies the office mask."),
+                @OpenApiParam(name = OFFICE, required = true, description =
+                            "Specifies the session office."),
             },
             method = HttpMethod.DELETE,
-            path = "/project-locks/{project-id}",
-            tags = {"Project Locks"}
+            path = PATH,
+            tags = {TAGS}
     )
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
-        String projectId = ctx.pathParam(PROJECT_ID);
-
         String office = requiredParam(ctx, OFFICE);
-        String appId = requiredParam(ctx, APPLICATION_ID);
-        int revokeTimeout = ctx.queryParamAsClass(REVOKE_TIMEOUT, Integer.class).getOrDefault(10);
+        String userId = requiredParam(ctx, USER_ID);
+        String appMask = requiredParam(ctx, APPLICATION_MASK);
+        String officeMask = requiredParam(ctx, OFFICE_MASK);
 
         try (final Timer.Context ignored = markAndTime(DELETE)) {
-            ProjectLockDao lockDao = new ProjectLockDao(JooqDao.getDslContext(ctx));
-
-            lockDao.revokeLock(office, projectId, appId, revokeTimeout);
+            DSLContext dslContext = getDslContext(ctx);
+            ProjectLockDao lockDao = new ProjectLockDao(dslContext);
+            lockDao.removeAllLockRevokerRights(office, userId, appMask, officeMask);
         }
         ctx.status(HttpServletResponse.SC_OK);
     }
-
 }
