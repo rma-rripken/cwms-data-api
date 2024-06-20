@@ -27,8 +27,8 @@ package cwms.cda.data.dao.project;
 import static cwms.cda.data.dao.project.ProjectDao.toBigInteger;
 
 import cwms.cda.data.dao.JooqDao;
-import cwms.cda.data.dto.project.ProjectLock;
-import cwms.cda.data.dto.project.LockRevokerRights;
+import cwms.cda.data.dto.project_dto.ProjectLock;
+import cwms.cda.data.dto.project_dto.LockRevokerRights;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.TimeZone;

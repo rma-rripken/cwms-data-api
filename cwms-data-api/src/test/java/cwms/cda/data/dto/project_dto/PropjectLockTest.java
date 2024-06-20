@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package cwms.cda.data.dto.project;
+package cwms.cda.data.dto.project_dto;
 
 import static org.junit.jupiter.api.Assertions.*;
 
