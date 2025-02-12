@@ -70,15 +70,15 @@ public class ClobDao extends JooqDao<Clob> {
         int total = 0;
         String cursorOffice = null;
         String cursorClobId = null;
-        AV_CLOB v_clob = AV_CLOB.AV_CLOB;
-        AV_OFFICE v_office = AV_OFFICE.AV_OFFICE;
+        AV_CLOB ac = AV_CLOB.AV_CLOB;
+        AV_OFFICE ao = AV_OFFICE.AV_OFFICE;
 
-        Condition whereClause = JooqDao.caseInsensitiveLikeRegex(v_clob.ID, idRegex)
-            .and(JooqDao.caseInsensitiveLikeRegexNullTrue(v_office.OFFICE_ID, officeLike));
+        Condition whereClause = JooqDao.caseInsensitiveLikeRegex(ac.ID, idRegex)
+            .and(JooqDao.caseInsensitiveLikeRegexNullTrue(ao.OFFICE_ID, officeLike));
         if (cursor == null || cursor.isEmpty()) {
             SelectConditionStep<Record1<Integer>> count = dsl.select(count(asterisk()))
-                .from(v_clob)
-                .join(v_office).on(v_clob.OFFICE_CODE.eq(v_office.OFFICE_CODE))
+                .from(ac)
+                .join(ao).on(ac.OFFICE_CODE.eq(ao.OFFICE_CODE))
                 .where(whereClause);
             Record1<Integer> rec = count.fetchOne();
             if(rec != null) {
@@ -100,20 +100,24 @@ public class ClobDao extends JooqDao<Clob> {
             }
         }
 
+        Condition moreInSameOffice = cursorClobId == null || cursorOffice == null ? noCondition() :
+                ao.OFFICE_ID.eq(cursorOffice.toUpperCase())
+                        .and(upper(ac.ID).greaterThan(cursorClobId.toUpperCase()));
+        Condition nextOffices = cursorOffice == null ? noCondition():
+                upper(ao.OFFICE_ID).greaterThan(cursorOffice.toUpperCase());
+        Condition pagingCondition = moreInSameOffice.or(nextOffices);
+
         SelectLimitPercentStep<Record4<String, String, String, String>> query = dsl.select(
-                v_office.OFFICE_ID,
-                v_clob.ID,
-                v_clob.DESCRIPTION,
-                includeValues ? v_clob.VALUE : DSL.inline("").as(v_clob.VALUE)
+                ao.OFFICE_ID,
+                ac.ID,
+                ac.DESCRIPTION,
+                includeValues ? ac.VALUE : DSL.inline("").as(ac.VALUE)
             )
-            .from(v_clob)
-            .join(v_office).on(v_clob.OFFICE_CODE.eq(v_office.OFFICE_CODE))
+            .from(ac)
+            .join(ao).on(ac.OFFICE_CODE.eq(ao.OFFICE_CODE))
             .where(whereClause)
-            .and(cursorClobId == null ? DSL.noCondition() :
-                DSL.upper(v_clob.ID).greaterThan(cursorClobId.toUpperCase()))
-            .and(cursorOffice == null ? DSL.noCondition() :
-                DSL.upper(v_office.OFFICE_ID).greaterThan(cursorOffice.toUpperCase()))
-            .orderBy(v_office.OFFICE_ID, v_clob.ID)
+            .and(pagingCondition)
+            .orderBy(ao.OFFICE_ID, ac.ID)
             .limit(pageSize);
 
 
@@ -122,8 +126,8 @@ public class ClobDao extends JooqDao<Clob> {
         logger.atFine().log(query.getSQL(ParamType.INLINED));
 
         query.fetch().forEach(row -> {
-            usace.cwms.db.jooq.codegen.tables.records.AV_CLOB clob = row.into(v_clob);
-            usace.cwms.db.jooq.codegen.tables.records.AV_OFFICE clobOffice = row.into(v_office);
+            usace.cwms.db.jooq.codegen.tables.records.AV_CLOB clob = row.into(ac);
+            usace.cwms.db.jooq.codegen.tables.records.AV_OFFICE clobOffice = row.into(ao);
             builder.addClob(new Clob(
                     clobOffice.getOFFICE_ID(),
                     clob.getID(),
@@ -153,8 +157,11 @@ public class ClobDao extends JooqDao<Clob> {
                         joinRecord.get(ac.VALUE)
                 );
 
-        return dsl.select(ac.asterisk(), ao.OFFICE_ID).from(
-                ac.join(ao).on(ac.OFFICE_CODE.eq(ao.OFFICE_CODE))).where(cond).fetch(mapper);
+        return dsl.select(ac.asterisk(), ao.OFFICE_ID)
+                .from(ac.join(ao).on(ac.OFFICE_CODE.eq(ao.OFFICE_CODE)))
+                .where(cond)
+                .orderBy(ao.OFFICE_ID, ac.ID)
+                .fetch(mapper);
     }
 
     public void create(Clob clob, boolean failIfExists) {
@@ -188,13 +195,13 @@ public class ClobDao extends JooqDao<Clob> {
 
     public void update(Clob clob, boolean ignoreNulls) {
 
-        String p_ignore_nulls = getBoolean(ignoreNulls);
+        String pIgnoreNulls = getBoolean(ignoreNulls);
 
-        // Note: when p_ignore_nulls == 'T' and the value or description is "" (not null)
+        // Note: when pIgnoreNulls == 'T' and the value or description is "" (not null)
         // the field is not updated.
-        // Also note: when p_ignore_nulls == 'F' and the value is null
+        // Also note: when pIgnoreNulls == 'F' and the value is null
         // it throws -  ORA-20244: NULL_ARGUMENT: Argument P_TEXT is not allowed to be null
-        // Also note: when p_ignore_nulls == 'F' and the value is "" (empty string)
+        // Also note: when pIgnoreNulls == 'F' and the value is "" (empty string)
         // it throws -  ORA-20244: NULL_ARGUMENT: Argument P_TEXT is not allowed to be null
         dsl.connection(c ->
             CWMS_TEXT_PACKAGE.call_UPDATE_TEXT(
@@ -202,7 +209,7 @@ public class ClobDao extends JooqDao<Clob> {
                 clob.getValue(),
                 clob.getId(),
                 clob.getDescription(),
-                p_ignore_nulls,
+                pIgnoreNulls,
                 clob.getOfficeId()
             )
         );
