@@ -240,11 +240,7 @@ public class ClobDao extends JooqDao<Clob> {
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     if (resultSet.next()) {
                         java.sql.Clob clob = resultSet.getClob("VALUE");
-                        if (clob != null) {
-                            clobConsumer.accept(clob);
-                        } else {
-                            clobConsumer.accept(null);
-                        }
+                        clobConsumer.accept(clob);
                     } else {
                         throw new NotFoundException("Unable to find clob with id " + clobId + " in office " + officeId);
                     }
